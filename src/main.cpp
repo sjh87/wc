@@ -1,17 +1,18 @@
-#include <array>
-#include <cstring>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <set>
 #include <sstream>
-#include <string>
 #include <stdexcept>
+#include <string>
 
 #define C_FLAG 0b1000
 #define L_FLAG 0b0100
 #define M_FLAG 0b0010
 #define W_FLAG 0b0001
+
+#define OUTPUT_COLUMN_WIDTH 6
 
 class BadFlagException : public std::exception {
 	std::string message;
@@ -94,12 +95,36 @@ struct Counts {
 	size_t w;
 };
 
+void printResultLine(const std::string &filename, const Counts &counts, const u_int8_t &flags) {
+	std::stringstream outputLine;
+
+	if (L_FLAG & flags) {
+		outputLine << std::setw(OUTPUT_COLUMN_WIDTH) << counts.l << " ";
+	}
+
+	if (W_FLAG & flags) {
+		outputLine << std::setw(OUTPUT_COLUMN_WIDTH) << counts.w << " ";
+	}
+
+	if (C_FLAG & flags) {
+		outputLine << std::setw(OUTPUT_COLUMN_WIDTH) << counts.c << " ";
+	}
+
+	if (M_FLAG & flags) {
+		outputLine << std::setw(OUTPUT_COLUMN_WIDTH) << counts.m << " ";
+	}
+
+	outputLine << filename;
+	std::cout << outputLine.str() << std::endl;
+}
+
 int main(int argc, char** argv) {
 	try {
 		u_int8_t flags = collectFlags(argc, argv);
 		std::set<std::string> filenames;
 		collectFilenames(argc, argv, filenames);
 
+		Counts totalCounts{};
 		std::map<std::string, Counts> countsPerFile;
 
 		for (const auto &filename : filenames) {
@@ -113,12 +138,15 @@ int main(int argc, char** argv) {
 
 			std::string line;
 			while (std::getline(file, line)) {
-				counts.c += line.length() + 1;
+				counts.c += line.length() + 1; // add one for newline/carriage return char
 				counts.l++;
 				counts.w += countWords(line);
 			}
 
 			if (file.eof()) {
+				totalCounts.c += counts.c;
+				totalCounts.l += counts.l;
+				totalCounts.w += counts.w;
 				countsPerFile.insert({ filename, counts });
 				continue;
 			} else if (file.bad()) {
@@ -128,28 +156,12 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		for (const auto& [filename, counts] : countsPerFile) {
-			std::stringstream outputLine;
+		for (const auto& [filename, counts] : countsPerFile)
+			printResultLine(filename, counts, flags);
+		
 
-			if (L_FLAG & flags) {
-				outputLine << counts.l << " ";
-			}
-
-			if (W_FLAG & flags) {
-				outputLine << counts.w << " ";
-			}
-
-			if (C_FLAG & flags) {
-				outputLine << counts.c << " ";
-			}
-
-			if (M_FLAG & flags) {
-				outputLine << counts.m << " ";
-			}
-
-			outputLine << filename;
-			std::cout << outputLine.str() << std::endl;
-		}
+		if (countsPerFile.size() > 1)
+			printResultLine("total", totalCounts, flags);
 
 	} catch (const BadFlagException& e) {
 		std::cout << e.what() << std::endl;
