@@ -6,6 +6,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <locale>
+#include <codecvt>
 
 #define C_FLAG 0b1000
 #define L_FLAG 0b0100
@@ -76,7 +78,7 @@ size_t countWords(std::string& line) {
 	size_t count{0};
 	bool inWord{false};
 	
-	for (char& c : line) {
+	for (const char& c : line) {
 		if (std::isspace(c)) {
 			inWord = false;
 		} else if (!inWord) {
@@ -88,11 +90,18 @@ size_t countWords(std::string& line) {
 	return count;
 }
 
+std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv;
+size_t countChars(std::string &line) {
+    std::u32string u32Str = conv.from_bytes(line);
+
+	return u32Str.length();
+}
+
 struct Counts {
-	size_t c;
-	size_t l;
-	size_t m;
-	size_t w;
+	size_t c; // bytes
+	size_t l; // lines
+	size_t m; // characters, including multi-byte characters
+	size_t w; // words
 };
 
 void printResultLine(const std::string &filename, const Counts &counts, const u_int8_t &flags) {
@@ -140,12 +149,19 @@ int main(int argc, char** argv) {
 			while (std::getline(file, line)) {
 				counts.c += line.length() + 1; // add one for newline/carriage return char
 				counts.l++;
+				counts.m += countChars(line) + 1;
 				counts.w += countWords(line);
 			}
 
 			if (file.eof()) {
+				if (!line.empty()) {
+					counts.c -= 1;
+					counts.m -= 1;
+				}
+
 				totalCounts.c += counts.c;
 				totalCounts.l += counts.l;
+				totalCounts.m += counts.m;
 				totalCounts.w += counts.w;
 				countsPerFile.insert({ filename, counts });
 				continue;
