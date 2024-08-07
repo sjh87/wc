@@ -115,12 +115,12 @@ void printResultLine(const std::string &filename, const Counts &counts, const u_
 		outputLine << std::setw(OUTPUT_COLUMN_WIDTH) << counts.w << " ";
 	}
 
-	if (C_FLAG & flags) {
-		outputLine << std::setw(OUTPUT_COLUMN_WIDTH) << counts.c << " ";
-	}
-
 	if (M_FLAG & flags) {
 		outputLine << std::setw(OUTPUT_COLUMN_WIDTH) << counts.m << " ";
+	}
+
+	if (C_FLAG & flags) {
+		outputLine << std::setw(OUTPUT_COLUMN_WIDTH) << counts.c << " ";
 	}
 
 	outputLine << filename;
