@@ -104,7 +104,7 @@ struct Counts {
 	size_t w; // words
 };
 
-void printResultLine(const std::string &filename, const Counts &counts, const u_int8_t &flags) {
+std::stringstream outputLineStream(const Counts &counts, const u_int8_t &flags) {
 	std::stringstream outputLine;
 
 	if (L_FLAG & flags) {
@@ -123,8 +123,15 @@ void printResultLine(const std::string &filename, const Counts &counts, const u_
 		outputLine << std::setw(OUTPUT_COLUMN_WIDTH) << counts.c << " ";
 	}
 
-	outputLine << filename;
-	std::cout << outputLine.str() << std::endl;
+	return outputLine;
+}
+
+std::stringstream outputLineStream(const std::string &filename, const Counts &counts, const u_int8_t &flags) {
+	std::stringstream outputLine = outputLineStream(counts, flags);
+
+	outputLine << std::setw(OUTPUT_COLUMN_WIDTH) << filename;
+
+	return outputLine;
 }
 
 int main(int argc, char** argv) {
@@ -133,17 +140,45 @@ int main(int argc, char** argv) {
 		std::set<std::string> filenames;
 		collectFilenames(argc, argv, filenames);
 
-		Counts totalCounts{};
+		if (filenames.empty()) {
+			Counts counts{};
+			std::string line;
+
+			while (std::getline(std::cin, line)) {
+				counts.c += line.length() + 1; // add one for newline/carriage return char
+				counts.l++;
+				counts.m += countChars(line) + 1;
+				counts.w += countWords(line);
+			}
+
+			if (std::cin.eof()) { // OS signals an EOF when the pipe is empty
+				if (!line.empty()) {
+					counts.c -= 1;
+					counts.m -= 1;
+				}
+
+			} else if (std::cin.bad()) {
+				std::cout << "could not read data from stdin" << std::endl;
+
+				return 1;
+			}
+
+			std::cout << outputLineStream(counts, flags).str() << std::endl;
+			return 0;
+		}
+
 		std::map<std::string, Counts> countsPerFile;
+		Counts totalCounts{};
 
 		for (const auto &filename : filenames) {
 			std::ifstream file(filename);
-			Counts counts{};
 
 			if (!file.is_open()) {
 				std::cout << "failed to open file \"" << filename << "\"" << std::endl;
 				return 1;
 			}
+
+			Counts counts{};
 
 			std::string line;
 			while (std::getline(file, line)) {
@@ -173,11 +208,11 @@ int main(int argc, char** argv) {
 		}
 
 		for (const auto& [filename, counts] : countsPerFile)
-			printResultLine(filename, counts, flags);
+			std::cout << outputLineStream(filename, counts, flags).str() << std::endl;
 		
 
 		if (countsPerFile.size() > 1)
-			printResultLine("total", totalCounts, flags);
+			std::cout << outputLineStream("total", totalCounts, flags).str() << std::endl;
 
 	} catch (const BadFlagException& e) {
 		std::cout << e.what() << std::endl;
