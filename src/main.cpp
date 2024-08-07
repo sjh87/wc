@@ -113,17 +113,15 @@ int main(int argc, char** argv) {
 
 			std::string line;
 			while (std::getline(file, line)) {
+				counts.c += line.length() + 1;
 				counts.l++;
 				counts.w += countWords(line);
 			}
 
-			if (file.bad()) {
-				if (file.eof()) {
-					counts.c = file.gcount();
-					countsPerFile.insert({ filename, counts });
-					continue;
-				}
-
+			if (file.eof()) {
+				countsPerFile.insert({ filename, counts });
+				continue;
+			} else if (file.bad()) {
 				std::cout << "could not read data in " << filename << std::endl;
 
 				return 1;
@@ -133,36 +131,40 @@ int main(int argc, char** argv) {
 		for (const auto& [filename, counts] : countsPerFile) {
 			std::stringstream outputLine;
 
-			if (L_FLAG && flags) {
+			if (L_FLAG & flags) {
 				outputLine << counts.l << " ";
 			}
 
-			if (W_FLAG && flags) {
+			if (W_FLAG & flags) {
 				outputLine << counts.w << " ";
 			}
 
-			if (C_FLAG && flags) {
+			if (C_FLAG & flags) {
 				outputLine << counts.c << " ";
 			}
 
-			if (M_FLAG && flags) {
+			if (M_FLAG & flags) {
 				outputLine << counts.m << " ";
 			}
 
 			outputLine << filename;
-			std::cout << outputLine.str();
+			std::cout << outputLine.str() << std::endl;
 		}
 
 	} catch (const BadFlagException& e) {
-        	std::cout << e.what() << std::endl;
-        	return 1;
+		std::cout << e.what() << std::endl;
+
+		return 1;
+	} catch (const std::bad_alloc& e) {
 		std::cout << "Memory allocation failed: " << e.what() << std::endl;
-        	std::cout << "The input might be too large to process." << std::endl;
-        	return 1;
+		std::cout << "The input might be too large to process." << std::endl;
+
+		return 1;
 	} catch (const std::exception& e) {
 		std::cout << "An unexpected error occurred: " << e.what() << std::endl;
-        	return 1;
-    	}
+
+		return 1;
+	}
 
 	return 0;
 }
